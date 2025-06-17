@@ -1,0 +1,229 @@
+\thispagestyle{plain}
+\section{Theory}
+\label{sec:theory}
+
+This theory section establishes the mathematical and architectural foundations necessary for understanding the neural network approaches applied in this thesis. Beginning with fundamental concepts of neural networks, the section explains feed-forward neural networks and their mathematical formulation. The discussion then progresses to recurrent architectures that can process sequential data, ultimately arriving at long short-term memory neural networks (LSTMs) that overcome critical limitations in temporal modeling. This theoretical progression provides the essential background for the methodology applied in this thesis.
+
+\subsection{Neural Networks}
+
+A neural network is a flexible machine-learning architecture that connects nodes arranged in successive layers. Each node computes a weighted sum of its inputs and applies a nonlinear activation function. During training, the network updates these weights through the backpropagation algorithm, enabling the entire chain to map training examples to the desired outputs. When multiple layers are stacked, the network first ingests raw data and subsequently, layer by layer, constructs increasingly abstract representations. Consequently, a neural network simultaneously discovers informative features and leverages them to generate predictions. Such depth allows the network to capture subtle, high-dimensional patterns without manual feature engineering, which explains why neural networks are now popular in computer vision, natural language processing, and scientific forecasting \parencite{goodfellow2016}. The same attributes are what makes them a relevant foundation for the short-term carbon emission forecasting models developed in this thesis.
+
+A neural network is structured as an input layer, one or more hidden layers, and an output layer, with each layer comprising numerous computing nodes. The input layer functions primarily as a pass-through: each node receives a single component of the feature vector (e.g., current wind generation, forecast wind speed, or temperature) and forwards it to the subsequent layer. Learning occurs within the hidden layers. Each hidden node multiplies its inputs by learned weights, adds a bias term, and applies a nonlinear activation function. During training, the backpropagation algorithm updates these weights and biases so that the hidden layers collectively minimize prediction error. The output layer then combines the highest-level representation, typically through a simple linear transformation, to produce the final prediction, such as the carbon emissions for the next hour. In essence, the layers first extract low-level patterns from the inputs and then iteratively recombine them into progressively higher-level abstractions that the output layer maps to the desired prediction \parencite{goodfellow2016}.
+
+\input{sections/figures/simple-neural-net.tex}
+
+\autoref{fig:simple-neural-net} provides a simplified illustration of a simple feed-forward neural network. The network comprises four nodes in the input layer, five nodes in each of the three hidden layers, and three nodes in the output layer. Data propagate from the input layer through the network to the output layer, i.e., from left to right. The input layer contains as many nodes as the length of the input vector, whereas the output layer contains one node per quantity that the network is expected to predict. For example, if the task is to forecast a single scalar, such as carbon emissions for the next hour, a single output node suffices. Conversely, if separate forecasts are required for three successive hours, three output nodes can be retained, as illustrated in the figure. Each blue line in the diagram represents a learnable weight. When the raw feature vector is presented at the input layer, its values are multiplied by the weights of the first set of edges, summed within each hidden-layer node, shifted by a bias, and passed through a nonlinear activation function. The resulting activations are treated as a new ``feature vector'' and fed into the subsequent layer, and the process continues. Because every node in one layer is connected to every node in the next layer (i.e., the network is fully connected), it can discover interactions among any combination of input features. Intuitively, the first hidden layer detects simple patterns, while the second and third hidden layers recombine these detectors into increasingly abstract representations aligned with the final task. During training, backpropagation adjusts all weights and biases so that the outputs of the rightmost layer approximate the target values as closely as possible. At convergence, the left-to-right flow transforms the raw feature vector into a compact internal representation that is maximally informative for prediction.
+
+In the context of neural networks, the term \emph{architecture} refers to a structural design and organization of a model. It specifies the number and types of layers, the arrangement of neurons within each layer, and the connectivity patterns among neurons. Together, these elements determine how data flow through the network and how computations are performed. This thesis focuses on the LSTM architecture. Before examining LSTMs in depth, the following sections present fundamental concepts that provide the mathematical groundwork necessary for understanding neural networks in general and the LSTM architecture in particular.
+
+To present neural networks precisely, this thesis adopts the mathematical notation from \citetitle{goodfellow2016} by \textcite{goodfellow2016}. This thesis adopts the standard conventions: scalars (italic lowercase, e.g., \(a\), \(s\)), vectors (bold lowercase, e.g., \(\mathbf{x}\), \(\mathbf{y}\)), and matrices (bold uppercase, e.g., \(\mathbf{A}\), \(\mathbf{B}\)). Individual vector elements are accessed with subscripts (\(x_i\)), and matrix elements with row-column indices (\(A_{i,j}\)).
+
+Having established the fundamental mathematical concepts, this thesis can now develop a precise mathematical formulation of feed-forward neural networks. This formulation will provide the necessary foundation for understanding both the forward propagation of data through the network and the subsequent backpropagation of gradients during training.
+
+First and foremost, it is essential to understand the concept of "activation" in neural networks. Inspired by biological neurons that fire when their accumulated electrical potential exceeds a threshold, the term "activation" in artificial neural networks refers to the output value of a computational unit after processing its inputs. When a neuron produces a significant non-zero output in response to an input pattern, it is said to "activate", indicating that it has detected a feature it was trained to recognize. The mathematical function that determines this output, transforming the weighted sum of inputs into the neuron's response, is called the activation function. These functions introduce crucial nonlinearity into the network, enabling it to approximate complex relationships.
+
+A feed-forward neural network consists of \(L\) layers, numbered from \(0\) to \(L\). Layer \(0\) is the input layer, which directly receives the feature vector representing our data point, while layer \(L\) is the output layer that produces the final prediction. The layers between, indexed as \(l \in \{1, 2, \ldots, L-1\}\), are called hidden layers because their activations are not directly observed in the input or output of the network.
+
+Each layer \(l\) contains a certain number of units or nodes, which are denoted as \(n^{(l)}\). For example, in the context of the carbon emission forecasting task, the input layer (\(l=0\)) might have \(n^{(0)}\) of 30 nodes corresponding to different meteorological variables, energy production factors, and temporal features, while the output layer (\(l=L\)) might have \(n^{(L)}=1\) node representing the predicted carbon emissions for the next hour.
+
+The vector of activations from layer \(l\) is denoted as \(\mathbf{h}^{(l)} \in \mathbb{R}^{n^{(l)}}\). For the input layer, these activations are simply the components of our input vector:
+
+\[
+  \mathbf{h}^{(0)} = \mathbf{x}
+\]
+
+where \(\mathbf{x} \in \mathbb{R}^{n^{(0)}}\) is the input feature vector. The vector \(\mathbf{h}^{(0)}\) passes these raw input values to the first hidden layer.
+
+For each subsequent layer \(l \in \{1, 2, \ldots, L\}\), the computation proceeds in two steps. First, a linear transformation is calculated of the previous layer's activations, producing what is known as the pre-activation or affine transformation:
+
+\[
+  \mathbf{a}^{(l)} = \mathbf{W}^{(l)}\mathbf{h}^{(l-1)} + \mathbf{b}^{(l)}
+\]
+
+Here, \(\mathbf{W}^{(l)} \in \mathbb{R}^{n^{(l)} \times n^{(l-1)}}\) is the weight matrix for layer \(l\), and \(\mathbf{b}^{(l)} \in \mathbb{R}^{n^{(l)}}\) is the bias vector. Each element \(W^{(l)}_{i,j}\) represents the influence of the \(j\)-th unit in layer \(l-1\) on the \(i\)-th unit in layer \(l\). The bias term \(\mathbf{b}^{(l)}\) allows each unit to activate even when all inputs are zero, providing flexibility in modeling the data.
+
+This matrix-vector multiplication computes, for each unit in layer \(l\), a weighted sum of all activations from the previous layer. Conceptually, this operation resembles a set of linear regression models, one for each unit in the current layer, with the previous layer's activations serving as predictors.
+
+The second step in the layer-wise computation introduces nonlinearity, which is crucial for the network's ability to model complex relationships. An activation function \(g^{(l)}\) is applied element-wise to the pre-activation vector:
+
+\[
+  \mathbf{h}^{(l)} = g^{(l)}(\mathbf{a}^{(l)})
+\]
+
+The activation function \(g^{(l)}\) is typically a nonlinear function such as the sigmoid, hyperbolic tangent (tanh), or rectified linear unit (ReLU). This nonlinearity is essential because a composition of linear transformations would be a linear transformation, which would severely limit the network's expressive capacity. By introducing nonlinearities, neural networks can approximate a rich class of functions, including those with complex, non-linear relationships between inputs and outputs - precisely the type of relationships expected in carbon emission dynamics.
+
+For the output layer \(L\), the activation function \(g^{(L)}\) is appropriate for the task at hand:
+
+\[
+  \mathbf{\hat{y}} = \mathbf{h}^{(L)} = g^{(L)}(\mathbf{a}^{(L)})
+\]
+
+where \(\mathbf{\hat{y}} \in \mathbb{R}^{n^{(L)}}\) is the network's prediction. The choice of \(g^{(L)}\) depends on the nature of the prediction task. For regression problems like forecasting carbon emissions, \(g^{(L)}\) is often the identity function, resulting in a linear output unit. For classification tasks, alternatives such as the softmax function might be more appropriate to obtain valid probability distributions over the possible classes.
+
+The entire forward propagation process, from input to output, can be expressed as a nested function composition:
+
+\[
+  \mathbf{\hat{y}} = f(\mathbf{x}; \mathbf{\theta}) = g^{(L)}(\mathbf{W}^{(L)}g^{(L-1)}(\ldots g^{(1)}(\mathbf{W}^{(1)}\mathbf{x} + \mathbf{b}^{(1)})\ldots) + \mathbf{b}^{(L)})
+\]
+
+where \(\mathbf{\theta} = \{\mathbf{W}^{(1)}, \mathbf{b}^{(1)}, \ldots, \mathbf{W}^{(L)}, \mathbf{b}^{(L)}\}\) represents all the model parameters. This formulation highlights the sequential transformation of the input data through the network: the input vector \(\mathbf{x}\) undergoes \(L\) successive transformations, each consisting of a linear mapping followed by a nonlinear activation, eventually producing the prediction \(\mathbf{\hat{y}}\).
+
+This mathematical expression connects directly to the earlier description of neural networks: the network ingests raw data and, layer by layer, constructs increasingly abstract representations \parencite{goodfellow2016}. The first hidden layer detects simple patterns in the input data, while subsequent hidden layers recombine these detectors into progressively more abstract representations aligned with the prediction task. At each stage, the learnable weights determine which combinations of features from the previous layer are informative for the next level of abstraction.
+
+To understand the computation at the level of individual nodes, consider a specific unit \(i\) in layer \(l\). Its pre-activation value \(a_i^{(l)}\) is calculated as:
+
+\[
+  a_i^{(l)} = \sum_{j=1}^{n^{(l-1)}} W_{i,j}^{(l)} h_j^{(l-1)} + b_i^{(l)}
+\]
+
+This equation demonstrates how each node aggregates information from all nodes in the previous layer, weighting each input according to the learned parameters. The activation of this node is then obtained by applying the nonlinear function:
+
+\[
+  h_i^{(l)} = g^{(l)}(a_i^{(l)})
+\]
+
+This perspective aligns with the earlier description of neural networks: each node computes a weighted sum of its inputs, adds a bias term, and applies a nonlinear activation function \parencite{goodfellow2016}. The network's expressive power emerges from the collective behavior of these simple computational units arranged across multiple layers.
+
+Given a dataset of \(m\) examples \(\{\mathbf{x}^{(1)}, \ldots, \mathbf{x}^{(m)}\}\) with corresponding targets \(\{\mathbf{y}^{(1)}, \ldots, \mathbf{y}^{(m)}\}\), the learning objective is to find the optimal parameters \(\mathbf{\theta}^*\) that minimize a loss function measuring the discrepancy between predictions and true values:
+
+\[
+  J(\mathbf{\theta}) = \frac{1}{m}\sum_{i=1}^{m}L(f(\mathbf{x}^{(i)}; \mathbf{\theta}), \mathbf{y}^{(i)})
+\]
+
+where \(J(\mathbf{\theta})\) is the overall cost function and \(L\) is the per-example loss function. For regression tasks like carbon emission forecasting, the loss function is commonly the mean squared error (MSE):
+
+\[
+  L(f(\mathbf{x}^{(i)}; \mathbf{\theta}), \mathbf{y}^{(i)}) = \|f(\mathbf{x}^{(i)}; \mathbf{\theta}) - \mathbf{y}^{(i)}\|_2^2
+\]
+
+Or more simply put:
+
+\[
+  L(\mathbf{\hat{y}}^{(i)}, \mathbf{y}^{(i)}) = \|\mathbf{\hat{y}}^{(i)} - \mathbf{y}^{(i)}\|_2^2
+\]
+
+The optimization of this objective function is typically performed using gradient-based methods, particularly the backpropagation algorithm, which efficiently computes the gradients of the cost function with respect to all parameters.
+
+In summary, this mathematical formulation provides a precise description of how a feed-forward neural network transforms input data into predictions through a series of parameterized linear and nonlinear operations. \autoref{fig:simple-neural-net-w-notation} illustrates this process for the example architecture, where the notation shows how the input vector \(\mathbf{x}\) propagates through multiple hidden layers with associated weight matrices \(\mathbf{W}^{(l)}\) and bias vectors \(\mathbf{b}^{(l)}\) to produce the output predictions \(\mathbf{\hat{y}}\). By learning the optimal parameters that minimize the prediction error on a training dataset, the network discovers informative features and leverages them to generate accurate forecasts for complex tasks like predicting carbon emissions.
+
+\input{sections/figures/simple-neural-net-w-notation.tex}
+
+As previously noted, the objective of neural network training is to minimize a loss function by systematically adjusting weights and biases to reduce prediction error. This optimization process depends on backpropagation, the central algorithm in neural network learning. By computing each parameter's contribution to the total error, backpropagation supplies precise information for updating model parameters. Forward propagation converts inputs into predictions, whereas backpropagation completes the learning loop by sending error information from the output layer back through the network, thereby directing parameter updates. Backpropagation involves a lot of math, but within the the scope of this thesis its intuition is covered instead.
+
+At its core, backpropagation resolves the practical question of how individual weights and biases influence the overall loss. Modern networks may contain millions of parameters, making brute-force calculation infeasible. By applying the chain rule, backpropagation efficiently propagates error signals from the output layer to earlier layers, thereby obtaining partial derivatives for every parameter in a single backward pass.
+
+The algorithm unfolds through the following steps:
+
+\begin{enumerate}
+  \item \textbf{Forward pass.} Input data traverse the network, each layer transforming the signal through its weights, biases, and activation functions. Intermediate activations are cached for later use.
+  \item \textbf{Error computation.} At the output layer, the difference between the network's predictions and the target values is evaluated. For regression tasks that employ a mean squared error loss with an identity output activation, this difference is the residual between predicted and actual values.
+  \item \textbf{Backward pass.} The resulting error signal propagates backward. For every layer, the algorithm assesses the contribution of each neuron to the errors in the subsequent layer. This calculation uses the transposed weight matrix, effectively reversing the direction of information flow.
+  \item \textbf{Gradient calculation.} Using the propagated errors together with the stored forward activations, the algorithm computes the gradient of the loss with respect to each weight and bias. These gradients indicate the direction and magnitude of the steepest ascent of error.
+  \item \textbf{Parameter update.} Finally, weights and biases are adjusted in the direction opposite to their gradients, most commonly through gradient descent or adaptive methods such as Adam or RMSprop. The learning-rate hyperparameter controls the step size of each update.
+\end{enumerate}
+
+Backpropagation is effective mainly because it is efficient \parencite{goodfellow2016}. By storing intermediate results, it computes every gradient with a cost proportional to the number of network connections. Optimization algorithms then follow these gradients, updating the weights step by step until the loss on a validation set stops improving, a signal that further training would likely lead to overfitting.
+
+\subsection{Recurrent Neural Networks}
+
+While feed-forward neural networks excel at learning patterns from fixed-size inputs, they cannot naturally handle sequential data where the order of observations matters. Recurrent Neural Networks (RNNs) address this limitation by introducing recurrent connections that allow information to persist across time steps. This architectural innovation makes RNNs particularly well-suited for time series forecasting applications, such as predicting carbon emissions based on historical patterns of energy generation, consumption, and meteorological conditions.
+
+In many practical applications, including carbon emission forecasting, data arrive as sequences with temporal dependencies. For instance, the carbon emissions in DK1 at a given hour depends not only on current conditions but also on the recent history of renewable generation, demand patterns, and grid dynamics. Feed-forward networks cannot capture these temporal relationships because they process each input independently, without memory of previous inputs. RNNs overcome this limitation by maintaining an internal state that acts as a "memory" of previously processed information.
+
+A RNN processes sequential data by iterating through the sequence elements and maintaining a state vector that is updated at each time step. Unlike feed-forward networks, which map inputs to outputs directly, RNNs share parameters across different time steps of the sequence. This parameter sharing reflects the intuition that the same rules should apply when processing each element in a sequence, regardless of its position.
+
+While feed-forward neural networks used the superscript \((l)\) to denote different layers, RNNs use the superscript \((t)\) to denote different time steps. This change reflects the fundamental difference between these architectures: feed-forward networks process data through a spatial hierarchy of layers, while RNNs process data through a temporal sequence of steps.
+
+\autoref{fig:rnn-unfolded} illustrates a simple RNN unfolded through time. The network processes an input sequence \(\{\mathbf{x}^{(1)},\allowbreak \mathbf{x}^{(2)},\allowbreak \mathbf{x}^{(3)}\}\) and produces a corresponding output sequence \(\{\mathbf{\hat{y}}^{(1)}, \mathbf{\hat{y}}^{(2)}, \mathbf{\hat{y}}^{(3)}\}\). At each time step \(t\), the network updates its hidden state \(\mathbf{h}^{(t)}\) based on the current input \(\mathbf{x}^{(t)}\) and the previous hidden state \(\mathbf{h}^{(t-1)}\). This recurrent connection (depicted by the horizontal arrows) enables the network to maintain information across time steps. Crucially, the same weight matrices \(\mathbf{W}_x\), \(\mathbf{W}_h\), and \(\mathbf{W}_y\) are reused at each time step, significantly reducing the number of parameters compared to a fully unfolded network with separate weights for each time step.
+
+\input{sections/figures/recurrent-neural-network-unfolded.tex}
+
+Consider a RNN processing a sequence of length \(T\). At each time step \(t \in \{1, 2, \ldots, T\}\), the network receives an input vector \(\mathbf{x}^{(t)} \in \mathbb{R}^{n_x}\), maintains a hidden state \(\mathbf{h}^{(t)} \in \mathbb{R}^{n_h}\), and produces an output \(\mathbf{\hat{y}}^{(t)} \in \mathbb{R}^{n_y}\).
+The update equations for a basic RNN are as follows:
+
+\[
+  \mathbf{h}^{(t)} = g_h(\mathbf{W}_x\mathbf{x}^{(t)} + \mathbf{W}_h\mathbf{h}^{(t-1)} + \mathbf{b}_h)
+\]
+\[
+  \mathbf{\hat{y}}^{(t)} = g_y(\mathbf{W}_y\mathbf{h}^{(t)} + \mathbf{b}_y)
+\]
+
+Here, \(\mathbf{W}_x \in \mathbb{R}^{n_h \times n_x}\) is the input-to-hidden weight matrix, \(\mathbf{W}_h \in \mathbb{R}^{n_h \times n_h}\) is the hidden-to-hidden weight matrix, \(\mathbf{W}_y \in \mathbb{R}^{n_y \times n_h}\) is the hidden-to-output weight matrix, and \(\mathbf{b}_h \in \mathbb{R}^{n_h}\) and \(\mathbf{b}_y \in \mathbb{R}^{n_y}\) are bias vectors \parencite{goodfellow2016}. The functions \(g_h\) and \(g_y\) are the nonlinear activation functions, which are typically hyperbolic tangent (\(\tanh\)) for the hidden state and an appropriate function for the output (identity for regression or softmax for classification).
+
+The initial hidden state \(\mathbf{h}^{(0)}\) is typically initialized to zero or learned during training. Through recurrence relations, each hidden state \(\mathbf{h}^{(t)}\) captures information not only from the current input \(\mathbf{x}^{(t)}\) but also from all previous inputs \(\mathbf{x}^{(1)}, \mathbf{x}^{(2)}, \ldots, \mathbf{x}^{(t-1)}\). This enables the network to model temporal dependencies and patterns in sequential data.
+
+A target variable with temporal dependencies suggest that models capable of processing sequential data would theoretically be advantageous over standard feed-forward networks, which treat each time point independently. In principle, a recurrent architecture could capture how sudden drops in wind generation lead to increased carbon emissions as fossil fuel plants compensate for the shortfall. The sequential modeling capability of RNNs appears to align well with the time series nature of carbon emission forecasting. However, electrical grid emissions are influenced by factors operating across multiple timescales, from immediate responses to renewable generation changes to longer-term effects of weather patterns and plant maintenance schedules spanning many hours or days. This multi-scale temporal dependency presents significant challenges for basic RNN architectures.
+
+Despite their theoretical capacity to model sequential data, basic RNNs encounter fundamental limitations when applied to real-world forecasting tasks like carbon emission prediction. The key challenge emerges during training, which requires an extension of the standard backpropagation algorithm called Backpropagation Through Time (BPTT). This approach conceptually unfolds the RNN into a deep feed-forward network (as shown in \autoref{fig:rnn-unfolded}) and accumulates gradients across time steps. When learning from extended sequences, the network must propagate error signals backward through many time steps, during which gradients can either vanish (becoming too small to drive meaningful updates) or explode (growing uncontrollably and destabilizing training). This problem is particularly pronounced in RNNs because the same recurrent weights are used repeatedly during backpropagation, causing error signals to be multiplied by the same factors many times. Consequently, basic RNNs typically fail to capture long-term dependencies, precisely the type of relationships needed for accurate carbon emission forecasting, where influences may span hours or days. For instance, a morning increase in forecasted wind production might affect generation planning and carbon emissions throughout the entire day, but a standard RNN would struggle to maintain this information for sufficient time steps. These limitations motivate the development of more sophisticated RNN architectures, particularly the LSTMs introduced in the next section, which were specifically designed to overcome the vanishing gradient problem through mechanisms that help maintain and control information flow across extended time horizons.
+
+\subsection{Long Short-Term Memory Neural Networks}
+
+Introduced by \textcite{hochreiter1997} long short-term memory neural networks (LSTMs), represent a specialized RNN architecture designed to overcome the limitations of standard RNNs, particularly the vanishing gradient problem. While basic RNNs theoretically can learn arbitrary temporal dependencies, their practical effectiveness diminishes significantly when dealing with long-range dependencies due to the multiplicative behavior of gradients during backpropagation. LSTM networks address this fundamental limitation through a carefully engineered architecture that enables selective memory retention across extended time horizons, making them particularly suitable for tasks like carbon emission forecasting where influential factors may span hours or days.
+
+The key innovation in LSTM networks is the introduction of a dual memory system that maintains information over arbitrary time intervals, protected and controlled by specialized gating mechanisms. Unlike standard RNN units, which overwrite their entire state at each time step, LSTM units implement two distinct types of memory that work in concert to selectively remember or forget information.
+
+\autoref{fig:long-short-term-memory-architecture} illustrates the architecture of an LSTM unit. At the core of this architecture are two complementary memory components:
+
+\begin{itemize}
+  \item \textbf{Cell state} \(\mathbf{c}^{(t)}\): The long-term memory that acts as an information highway flowing across time steps. This component is designed to preserve important information for extended periods, potentially hundreds or thousands of time steps, with minimal degradation.
+  \item \textbf{Hidden state} \(\mathbf{h}^{(t)}\): The short-term or working memory that represents what the network outputs at each time step. This component is more dynamic and reflects the network's current "focus" based on both the long-term memory and immediate inputs.
+\end{itemize}
+
+The cell state is updated through a carefully orchestrated process involving three specialized gates and a candidate value generator \parencite{hochreiter1997}:
+
+\begin{enumerate}
+  \item \textbf{Forget gate} \(\mathbf{f}^{(t)}\): Determines what information from the previous cell state should be discarded.
+  \item \textbf{Candidate values} \(\mathbf{\tilde{c}}^{(t)}\): Generate new candidate information that could potentially be stored in the cell state, based on the current input and previous hidden state.
+  \item \textbf{Input gate} \(\mathbf{i}^{(t)}\): Controls what portion of the candidate values will actually be stored in the cell state.
+  \item \textbf{Output gate} \(\mathbf{o}^{(t)}\): Regulates what information from the updated cell state contributes to the hidden state (and thus the network's output).
+\end{enumerate}
+
+\input{sections/figures/lstm-architecture.tex}
+
+This dual memory architecture allows the LSTM to keep important information stored for long periods in the cell state, while the hidden state can quickly adapt to new inputs. This solves the vanishing gradient problem because the cell state provides a more direct pathway for gradients to flow backward through time during training.
+
+To describe the LSTM mathematically and better understand \autoref{fig:long-short-term-memory-architecture}, additional notation must be introduced for the gates and states involved in the computation. At each time step (t), an LSTM unit maintains two types of states: the cell state \(\mathbf{c}^{(t)} \in \mathbb{R}^{n_h}\) and the hidden state \(\mathbf{h}^{(t)} \in \mathbb{R}^{n_h}\), where \(n_h\) is the dimensionality of the hidden state.
+
+The LSTM computation proceeds as follows:
+
+\textbf{1. Forget gate:} The forget gate \(\mathbf{f}^{(t)}\) determines which elements of the cell state should be retained or discarded:
+
+\[
+  \mathbf{f}^{(t)} = \sigma(\mathbf{W}_f\mathbf{x}^{(t)} + \mathbf{U}_f\mathbf{h}^{(t-1)} + \mathbf{b}_f)
+\]
+
+Here, \(\mathbf{W}_f \in \mathbb{R}^{n_h \times n_x}\) and \(\mathbf{U}_f \in \mathbb{R}^{n_h \times n_h}\) are weight matrices, \(\mathbf{b}_f \in \mathbb{R}^{n_h}\) is a bias vector, and \(\sigma\) is the sigmoid activation function that outputs values between 0 and 1. Values close to 0 indicate information to forget, while values close to 1 indicate information to keep.
+
+\textbf{2. Input gate and candidate values:} The input gate \(\mathbf{i}^{(t)}\) controls which new information will be stored in the cell state, while a \(\tanh\) layer creates a vector of candidate values \(\mathbf{\tilde{c}}^{(t)}\) that could be added to the cell state:
+
+\[
+  \mathbf{i}^{(t)} = \sigma(\mathbf{W}_i\mathbf{x}^{(t)} + \mathbf{U}_i\mathbf{h}^{(t-1)} + \mathbf{b}_i)
+\]
+\[
+  \mathbf{\tilde{c}}^{(t)} = \tanh(\mathbf{W}_c\mathbf{x}^{(t)} + \mathbf{U}_c\mathbf{h}^{(t-1)} + \mathbf{b}_c)
+\]
+
+\textbf{3. Cell state update:} The cell state is updated by forgetting information (via the forget gate) and adding new information (via the input gate and candidate values):
+
+\[
+  \mathbf{c}^{(t)} = \mathbf{f}^{(t)} \odot \mathbf{c}^{(t-1)} + \mathbf{i}^{(t)} \odot \mathbf{\tilde{c}}^{(t)}
+\]
+
+where \(\odot\) denotes the Hadamard product (element-wise multiplication). This update equation is crucial for the LSTM's ability to maintain information over long time intervals. The multiplicative forget gate allows gradients to flow through the cell state without vanishing, as information can be preserved with minimal alteration across many time steps.
+
+\textbf{4. Output gate and hidden state:} The output gate \(\mathbf{o}^{(t)}\) determines what information from the cell state will be exposed to the next layer or time step through the hidden state:
+
+\[
+  \mathbf{o}^{(t)} = \sigma(\mathbf{W}_o\mathbf{x}^{(t)} + \mathbf{U}_o\mathbf{h}^{(t-1)} + \mathbf{b}_o)
+\]
+\[
+  \mathbf{h}^{(t)} = \mathbf{o}^{(t)} \odot \tanh(\mathbf{c}^{(t)})
+\]
+
+The final hidden state \(\mathbf{h}^{(t)}\) serves as both the output at the current time step and an input to the next time step.
+
+The complete set of parameters for an LSTM layer consists of the weight matrices \(\mathbf{W}_f\), \(\mathbf{W}_i\), \(\mathbf{W}_c\), \(\mathbf{W}_o\), \(\mathbf{U}_f\), \(\mathbf{U}_i\), \(\mathbf{U}_c\), \(\mathbf{U}_o\), and the bias vectors \(\mathbf{b}_f\), \(\mathbf{b}_i\), \(\mathbf{b}_c\), \(\mathbf{b}_o\). These parameters are learned during training using backpropagation through time, as with standard RNNs \parencite{goodfellow2016}.
+
+As with the backpropagation algorithm discussed earlier, a full mathematical revision of how LSTMs overcome the vanishing gradient problem would extend beyond the scope of this thesis. A conceptual overview provides sufficient insight into this critical advantage of LSTM networks.
+
+The LSTM architecture addresses the vanishing gradient problem through two key mechanisms. First, the cell state acts as an information highway through which data can flow across many time steps with minimal transformation. When the forget gate outputs values close to 1, both information and gradients can propagate effectively without significant attenuation. Second, the additive update structure of the cell state (as opposed to the purely multiplicative updates in standard RNNs) prevents the gradient from being repeatedly multiplied by potentially small values during backpropagation. Together, these design elements create stable paths for gradient flow, enabling LSTMs to learn dependencies across extended time horizons.

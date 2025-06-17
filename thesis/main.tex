@@ -1,0 +1,107 @@
+\documentclass{article}
+
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xltabular}
+\usepackage{xcolor}
+\usepackage{eurosym}
+
+\usepackage[style=apa]{biblatex}
+\addbibresource{references.bib}
+
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage{geometry}
+\geometry{
+    top=3cm,
+    bottom=3cm,
+    left=2.5cm,
+    right=2.5cm
+}
+
+\usepackage{fancyhdr}
+\fancypagestyle{fancy}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0.8pt}
+    \fancyhead[L]{\textit{\leftmark}}
+    \fancyfoot[C]{\thepage}
+}
+\renewcommand{\sectionmark}[1]{\markboth{\thesection. #1}{}}
+\newcommand{\setupappendixheaders}{%
+    \renewcommand{\subsectionmark}[1]{\markboth{Appendix \thesubsection: ##1}{}}%
+}
+\renewcommand{\contentsname}{Contents}
+\pagestyle{fancy}
+
+\usepackage{chngcntr}
+\AtBeginDocument{
+  \counterwithin{figure}{section}
+  \counterwithin{table}{section}
+}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+\usepackage{caption}
+\newcommand{\autorefapdx}[1]{\hyperref[#1]{appendix~\ref*{#1}}}
+
+\usepackage{tikz}
+\tikzstyle{node:input}=[circle,draw,minimum size=1.28cm,fill=green!20]
+\tikzstyle{node:inputlabelcolor}=[green!60!black]
+\tikzstyle{node:hidden}=[circle,draw,minimum size=1.28cm,fill=blue!20]
+\tikzstyle{node:hiddenlabelcolor}=[blue!60!black]
+\tikzstyle{node:output}=[circle,draw,minimum size=1.28cm,fill=red!20]
+\tikzstyle{node:outputlabelcolor}=[red!60!black]
+\tikzstyle{node:gate}=[circle,draw,minimum size=1.28cm,fill=yellow!30]
+\tikzstyle{node:gatelabelcolor}=[yellow!70!black]
+\tikzstyle{node:operation}=[circle,draw,minimum size=1cm,fill=gray!20]
+\tikzstyle{draw:connection}=[-latex, thick, rounded corners=4pt]
+
+\newcommand{\cotwo}{CO$_{2}$}
+\newcommand{\cotwoe}{CO$_{2}$e}
+
+\renewcommand{\arraystretch}{1.3} % sets tables to extra 30% space vertically
+
+\begin{document}
+
+\include{sections/front.tex}
+
+\include{sections/licensing.tex}
+
+%COUNT:abstract
+\include{sections/abstract.tex}
+%COUNT:endabstract
+
+\include{sections/acknowledgements.tex}
+
+\include{sections/toc.tex}
+
+%COUNT:main
+\include{sections/introduction.tex}
+
+\include{sections/literature-review.tex}
+
+\include{sections/theory.tex}
+
+\include{sections/methodology.tex}
+
+\include{sections/results.tex}
+
+\include{sections/discussion.tex}
+
+\include{sections/conclusion.tex}
+%COUNT:endmain
+
+\include{sections/references.tex}
+
+\include{sections/appendices.tex}
+
+\end{document}

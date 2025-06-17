@@ -1,0 +1,43 @@
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[x=2.4cm,y=1.6cm]
+        % Hidden states
+        \node[node:hidden] (h0) at (0,0) {$\mathbf{h}^{(0)}$};
+        \node[node:hidden] (h1) at (1,0) {$\mathbf{h}^{(1)}$};
+        \node[node:hidden] (h2) at (2,0) {$\mathbf{h}^{(2)}$};
+        \node[node:hidden] (h3) at (3,0) {$\mathbf{h}^{(3)}$};
+
+        % Inputs
+        \node[node:input] (x1) at (1,-1.5) {$\mathbf{x}^{(1)}$};
+        \node[node:input] (x2) at (2,-1.5) {$\mathbf{x}^{(2)}$};
+        \node[node:input] (x3) at (3,-1.5) {$\mathbf{x}^{(3)}$};
+
+        % Outputs
+        \node[node:output] (y1) at (1,1.5) {$\mathbf{\hat{y}}^{(1)}$};
+        \node[node:output] (y2) at (2,1.5) {$\mathbf{\hat{y}}^{(2)}$};
+        \node[node:output] (y3) at (3,1.5) {$\mathbf{\hat{y}}^{(3)}$};
+
+        % draw:connections between hidden states
+        \draw[draw:connection] (h0) -- (h1) node[midway,above] {$\mathbf{W}_{h}$};
+        \draw[draw:connection] (h1) -- (h2) node[midway,above] {$\mathbf{W}_{h}$};
+        \draw[draw:connection] (h2) -- (h3) node[midway,above] {$\mathbf{W}_{h}$};
+
+        % draw:connections from inputs to hidden states
+        \draw[draw:connection] (x1) -- (h1) node[midway,right] {$\mathbf{W}_{x}$};
+        \draw[draw:connection] (x2) -- (h2) node[midway,right] {$\mathbf{W}_{x}$};
+        \draw[draw:connection] (x3) -- (h3) node[midway,right] {$\mathbf{W}_{x}$};
+
+        % draw:connections from hidden states to outputs
+        \draw[draw:connection] (h1) -- (y1) node[midway,right] {$\mathbf{W}_{y}$};
+        \draw[draw:connection] (h2) -- (y2) node[midway,right] {$\mathbf{W}_{y}$};
+        \draw[draw:connection] (h3) -- (y3) node[midway,right] {$\mathbf{W}_{y}$};
+
+        % Labels
+        \node[text width=3cm,node:hiddenlabelcolor] at (4.5,0) {Hidden States};
+        \node[text width=3cm,node:inputlabelcolor] at (4.5,-1.5) {Input Sequence};
+        \node[text width=3cm,node:outputlabelcolor] at (4.5,1.5) {Output Sequence};
+
+    \end{tikzpicture}
+    \caption{Recurrent Neural Network Unfolded Through Time}
+    \label{fig:rnn-unfolded}
+\end{figure}

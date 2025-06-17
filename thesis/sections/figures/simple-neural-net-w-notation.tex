@@ -1,0 +1,73 @@
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[x=3.6cm,y=1.8cm]
+        % Input layer (4 nodes)
+        \node[node:input] (N1-1) at (1,1.5) {$\mathbf{x}_1$};
+        \node[node:input] (N1-2) at (1,0.5) {$\mathbf{x}_2$};
+        \node[node:input] (N1-3) at (1,-0.5) {$\mathbf{x}_3$};
+        \node[node:input] (N1-4) at (1,-1.5) {$\mathbf{x}_4$};
+
+        % First hidden layer (5 nodes)
+        \node[node:hidden] (N2-1) at (2,2) {$\mathbf{h}^{(1)}_1$};
+        \node[node:hidden] (N2-2) at (2,1) {$\mathbf{h}^{(1)}_2$};
+        \node[node:hidden] (N2-3) at (2,0) {$\mathbf{h}^{(1)}_3$};
+        \node[node:hidden] (N2-4) at (2,-1) {$\mathbf{h}^{(1)}_4$};
+        \node[node:hidden] (N2-5) at (2,-2) {$\mathbf{h}^{(1)}_5$};
+
+        % Second hidden layer (5 nodes)
+        \node[node:hidden] (N3-1) at (3,2) {$\mathbf{h}^{(2)}_1$};
+        \node[node:hidden] (N3-2) at (3,1) {$\mathbf{h}^{(2)}_2$};
+        \node[node:hidden] (N3-3) at (3,0) {$\mathbf{h}^{(2)}_3$};
+        \node[node:hidden] (N3-4) at (3,-1) {$\mathbf{h}^{(2)}_4$};
+        \node[node:hidden] (N3-5) at (3,-2) {$\mathbf{h}^{(2)}_5$};
+
+        % Third hidden layer (5 nodes)
+        \node[node:hidden] (N4-1) at (4,2) {$\mathbf{h}^{(3)}_1$};
+        \node[node:hidden] (N4-2) at (4,1) {$\mathbf{h}^{(3)}_2$};
+        \node[node:hidden] (N4-3) at (4,0) {$\mathbf{h}^{(3)}_3$};
+        \node[node:hidden] (N4-4) at (4,-1) {$\mathbf{h}^{(3)}_4$};
+        \node[node:hidden] (N4-5) at (4,-2) {$\mathbf{h}^{(3)}_5$};
+
+        % Output layer (3 nodes)
+        \node[node:output] (N5-1) at (5,1) {$\mathbf{\hat{y}}_1$};
+        \node[node:output] (N5-2) at (5,0) {$\mathbf{\hat{y}}_2$};
+        \node[node:output] (N5-3) at (5,-1) {$\mathbf{\hat{y}}_3$};
+
+        % draw:connections from input to first hidden layer
+        \foreach \i in {1,2,3,4}
+        \foreach \j in {1,2,3,4,5} {
+                \draw[draw:connection] (N1-\i) -- (N2-\j);
+            }
+
+        % draw:connections from first to second hidden layer
+        \foreach \i in {1,2,3,4,5}
+        \foreach \j in {1,2,3,4,5} {
+                \draw[draw:connection] (N2-\i) -- (N3-\j);
+            }
+
+        % draw:connections from second to third hidden layer
+        \foreach \i in {1,2,3,4,5}
+        \foreach \j in {1,2,3,4,5} {
+                \draw[draw:connection] (N3-\i) -- (N4-\j);
+            }
+
+        % draw:connections from third hidden layer to output
+        \foreach \i in {1,2,3,4,5}
+        \foreach \j in {1,2,3} {
+                \draw[draw:connection] (N4-\i) -- (N5-\j);
+            }
+
+        % Labels with vector notation
+        \node[above=5,align=center,node:inputlabelcolor] at (N1-1.90) {Input\\[-0.2em]Layer};
+        \node[above=2,align=center,node:hiddenlabelcolor] at (N3-1.90) {Hidden Layer\\[-0.2em]};
+        \node[above=10,align=center,node:outputlabelcolor] at (N5-1.90) {Output\\[-0.2em]Layer};
+
+        % Add weight matrix labels between layers
+        \node[align=center] at (1.5,2) {$\mathbf{W}^{(1)}, \mathbf{b}^{(1)}$};
+        \node[align=center] at (2.5,2.25) {$\mathbf{W}^{(2)}, \mathbf{b}^{(2)}$};
+        \node[align=center] at (3.5,2.25) {$\mathbf{W}^{(3)}, \mathbf{b}^{(3)}$};
+        \node[align=center] at (4.5,2) {$\mathbf{W}^{(4)}, \mathbf{b}^{(4)}$};
+    \end{tikzpicture}
+    \caption{Simple Neural Network with Notation}
+    \label{fig:simple-neural-net-w-notation}
+\end{figure}
